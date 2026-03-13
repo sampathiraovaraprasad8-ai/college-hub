@@ -16,6 +16,10 @@ const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Variables from Environment
+const MONGO_URI = process.env.MONGO_URI;
+const PORT = process.env.PORT || 10000; // Render uses 10000 by default
+
 /* MIDDLEWARE */
 app.use(express.static("public"));
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -25,11 +29,14 @@ app.use(
   session({
     secret: process.env.SESSION_SECRET || "collegeportal",
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false, // Changed to false for better performance
     store: MongoStore.create({
-      mongoUrl: process.env.MONGO_URI,
+      mongoUrl: MONGO_URI,
       collectionName: "sessions",
     }),
+    cookie: {
+        maxAge: 1000 * 60 * 60 * 24 // 1 day
+    }
   })
 );
 
@@ -43,22 +50,26 @@ function checkAuth(req, res, next) {
 }
 
 /* MONGODB CONNECTION */
-const client = new MongoClient(process.env.MONGO_URI);
+const client = new MongoClient(MONGO_URI);
 let users;
 
 async function start() {
   try {
+    if (!MONGO_URI) {
+        throw new Error("MONGO_URI is missing from Environment Variables!");
+    }
+    
     await client.connect();
     const db = client.db("collegePortal");
     users = db.collection("users");
     console.log("MongoDB Connected ✅");
 
-    const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);
     });
   } catch (err) {
-    console.error("Failed to connect to MongoDB", err);
+    console.error("❌ Failed to connect to MongoDB:", err.message);
+    process.exit(1); // Stop the server if DB fails
   }
 }
 
@@ -80,47 +91,46 @@ app.get("/home", checkAuth, (req, res) => {
   res.sendFile(path.join(__dirname, "public", "home.html"));
 });
 
-// FIRST YEAR
-app.get("/first-year", checkAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "first-year.html"));
-});
-
-// SECOND YEAR
-app.get("/second-year", checkAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "second-year.html"));
-});
-
-// THIRD YEAR
-app.get("/third-year", checkAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "third-year.html"));
+// OTHER PAGES
+const pages = ["first-year", "second-year", "third-year"];
+pages.forEach(page => {
+    app.get(`/${page}`, checkAuth, (req, res) => {
+        res.sendFile(path.join(__dirname, "public", `${page}.html`));
+    });
 });
 
 // REGISTER
 app.post("/register", async (req, res) => {
-  const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
+    const existingUser = await users.findOne({ email });
+    if (existingUser) return res.send("User already exists");
 
-  const existingUser = await users.findOne({ email });
-  if (existingUser) return res.send("User already exists");
-
-  const hash = await bcrypt.hash(password, 10);
-  await users.insertOne({ email, password: hash });
-
-  res.redirect("/");
+    const hash = await bcrypt.hash(password, 10);
+    await users.insertOne({ email, password: hash });
+    res.redirect("/");
+  } catch (err) {
+    res.status(500).send("Registration failed");
+  }
 });
 
 // LOGIN
 app.post("/login", async (req, res) => {
-  const { email, password } = req.body;
-  const user = await users.findOne({ email });
+  try {
+    const { email, password } = req.body;
+    const user = await users.findOne({ email });
 
-  if (!user) return res.send("Invalid Email or Password");
+    if (!user) return res.send("Invalid Email or Password");
 
-  const match = await bcrypt.compare(password, user.password);
-  if (match) {
-    req.session.user = email;
-    return res.redirect("/home");
-  } else {
-    return res.send("Invalid Email or Password");
+    const match = await bcrypt.compare(password, user.password);
+    if (match) {
+      req.session.user = email;
+      return res.redirect("/home");
+    } else {
+      return res.send("Invalid Email or Password");
+    }
+  } catch (err) {
+    res.status(500).send("Login failed");
   }
 });
 
