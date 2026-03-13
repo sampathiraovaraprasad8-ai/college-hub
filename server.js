@@ -12,11 +12,9 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const app = express();
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Variables from Environment (Render)
 const MONGO_URI = process.env.MONGO_URI;
 const PORT = process.env.PORT || 10000; 
 
@@ -35,7 +33,7 @@ app.use(
       collectionName: "sessions",
     }),
     cookie: {
-        maxAge: 1000 * 60 * 60 * 24 // Sessions last 1 day
+        maxAge: 1000 * 60 * 60 * 24 // 1 day
     }
   })
 );
@@ -45,7 +43,7 @@ function checkAuth(req, res, next) {
   if (req.session.user) {
     next();
   } else {
-    res.redirect("/");
+    res.redirect("/login");
   }
 }
 
@@ -55,36 +53,33 @@ let users;
 
 async function start() {
   try {
-    if (!MONGO_URI) {
-        throw new Error("MONGO_URI is missing! Check Render Environment Variables.");
-    }
-    
+    if (!MONGO_URI) throw new Error("MONGO_URI is missing!");
     await client.connect();
     const db = client.db("collegePortal");
     users = db.collection("users");
     console.log("MongoDB Connected ✅");
 
-    // Important: Listen on 0.0.0.0 for Render
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);
     });
   } catch (err) {
-    console.error("❌ Database Connection Error:", err.message);
+    console.error("❌ DB Error:", err.message);
     process.exit(1); 
   }
 }
-
 start();
 
 /* ROUTES */
 
-// LOGIN PAGE
+// Redirect root to login or home
 app.get("/", (req, res) => {
-  if (req.session.user) {
-    res.redirect("/home");
-  } else {
-    res.sendFile(path.join(__dirname, "public", "login.html"));
-  }
+  if (req.session.user) res.redirect("/home");
+  else res.redirect("/login");
+});
+
+// LOGIN PAGE (Route fix)
+app.get("/login", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "login.html"));
 });
 
 // HOME PAGE
@@ -100,29 +95,26 @@ pages.forEach(page => {
     });
 });
 
-// REGISTER LOGIC
+// REGISTER
 app.post("/register", async (req, res) => {
   try {
     const { email, password } = req.body;
     const existingUser = await users.findOne({ email });
     if (existingUser) return res.send("User already exists");
-
     const hash = await bcrypt.hash(password, 10);
     await users.insertOne({ email, password: hash });
-    res.redirect("/");
+    res.redirect("/login");
   } catch (err) {
     res.status(500).send("Registration failed");
   }
 });
 
-// LOGIN LOGIC
+// LOGIN
 app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await users.findOne({ email });
-
     if (!user) return res.send("Invalid Email or Password");
-
     const match = await bcrypt.compare(password, user.password);
     if (match) {
       req.session.user = email;
@@ -138,6 +130,7 @@ app.post("/login", async (req, res) => {
 // LOGOUT
 app.get("/logout", (req, res) => {
   req.session.destroy(() => {
-    res.redirect("/");
+    res.clearCookie('connect.sid');
+    res.redirect("/login");
   });
 });
