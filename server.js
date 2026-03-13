@@ -1,177 +1,132 @@
-import express from "express"
-import bodyParser from "body-parser"
-import { MongoClient } from "mongodb"
-import bcrypt from "bcrypt"
-import session from "express-session"
-import path from "path"
-import { fileURLToPath } from "url"
+// server.js
+import express from "express";
+import bodyParser from "body-parser";
+import { MongoClient } from "mongodb";
+import bcrypt from "bcrypt";
+import session from "express-session";
+import MongoStore from "connect-mongo";
+import path from "path";
+import { fileURLToPath } from "url";
+import dotenv from "dotenv";
 
-const app = express()
+dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const app = express();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /* MIDDLEWARE */
+app.use(express.static("public"));
+app.use(bodyParser.urlencoded({ extended: true }));
 
-app.use(express.static("public"))
-app.use(bodyParser.urlencoded({extended:true}))
-
-app.use(session({
-secret:"collegeportal",
-resave:false,
-saveUninitialized:true
-}))
+/* SESSION WITH MONGO STORE */
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "collegeportal",
+    resave: false,
+    saveUninitialized: true,
+    store: MongoStore.create({
+      mongoUrl: process.env.MONGO_URI,
+      collectionName: "sessions",
+    }),
+  })
+);
 
 /* AUTH MIDDLEWARE */
-
-function checkAuth(req,res,next){
-
-if(req.session.user){
-next()
-}else{
-res.redirect("/")
+function checkAuth(req, res, next) {
+  if (req.session.user) {
+    next();
+  } else {
+    res.redirect("/");
+  }
 }
 
+/* MONGODB CONNECTION */
+const client = new MongoClient(process.env.MONGO_URI);
+let users;
+
+async function start() {
+  try {
+    await client.connect();
+    const db = client.db("collegePortal");
+    users = db.collection("users");
+    console.log("MongoDB Connected ✅");
+
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  } catch (err) {
+    console.error("Failed to connect to MongoDB", err);
+  }
 }
 
-/* MONGODB */
-
-const url = "mongodb://127.0.0.1:27017"
-const client = new MongoClient(url)
-
-let users
-
-async function start(){
-
-await client.connect()
-
-const db = client.db("collegePortal")
-
-users = db.collection("users")
-
-console.log("MongoDB Connected")
-
-app.listen(3000,()=>{
-console.log("Server running http://localhost:3000")
-})
-
-}
-
-start()
+start();
 
 /* ROUTES */
 
+// LOGIN PAGE
+app.get("/", (req, res) => {
+  if (req.session.user) {
+    res.redirect("/home");
+  } else {
+    res.sendFile(path.join(__dirname, "public", "login.html"));
+  }
+});
 
-/* LOGIN PAGE */
+// HOME PAGE
+app.get("/home", checkAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "home.html"));
+});
 
-app.get("/",(req,res)=>{
+// FIRST YEAR
+app.get("/first-year", checkAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "first-year.html"));
+});
 
-if(req.session.user){
-res.redirect("/home")
-}else{
-res.sendFile(path.join(__dirname,"public","login.html"))
-}
+// SECOND YEAR
+app.get("/second-year", checkAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "second-year.html"));
+});
 
-})
+// THIRD YEAR
+app.get("/third-year", checkAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "third-year.html"));
+});
 
+// REGISTER
+app.post("/register", async (req, res) => {
+  const { email, password } = req.body;
 
-/* HOME PAGE */
+  const existingUser = await users.findOne({ email });
+  if (existingUser) return res.send("User already exists");
 
-app.get("/home",checkAuth,(req,res)=>{
+  const hash = await bcrypt.hash(password, 10);
+  await users.insertOne({ email, password: hash });
 
-res.sendFile(path.join(__dirname,"public","home.html"))
+  res.redirect("/");
+});
 
-})
+// LOGIN
+app.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+  const user = await users.findOne({ email });
 
+  if (!user) return res.send("Invalid Email or Password");
 
-/* FIRST YEAR */
+  const match = await bcrypt.compare(password, user.password);
+  if (match) {
+    req.session.user = email;
+    return res.redirect("/home");
+  } else {
+    return res.send("Invalid Email or Password");
+  }
+});
 
-app.get("/first-year",checkAuth,(req,res)=>{
-
-res.sendFile(path.join(__dirname,"public","first-year.html"))
-
-})
-
-
-/* SECOND YEAR */
-
-app.get("/second-year",checkAuth,(req,res)=>{
-
-res.sendFile(path.join(__dirname,"public","second-year.html"))
-
-})
-
-
-/* THIRD YEAR */
-
-app.get("/third-year",checkAuth,(req,res)=>{
-
-res.sendFile(path.join(__dirname,"public","third-year.html"))
-
-})
-
-
-/* REGISTER */
-
-app.post("/register", async (req,res)=>{
-
-const {email,password} = req.body
-
-const existingUser = await users.findOne({email})
-
-if(existingUser){
-return res.send("User already exists")
-}
-
-const hash = await bcrypt.hash(password,10)
-
-await users.insertOne({
-email,
-password:hash
-})
-
-/* redirect to login page */
-
-res.redirect("/")
-
-})
-
-
-/* LOGIN */
-
-app.post("/login", async (req,res)=>{
-
-const {email,password} = req.body
-
-const user = await users.findOne({email})
-
-if(!user){
-return res.send("Invalid Email or Password")
-}
-
-const match = await bcrypt.compare(password,user.password)
-
-if(match){
-
-req.session.user=email
-
-return res.redirect("/home")
-
-}else{
-
-return res.send("Invalid Email or Password")
-
-}
-
-})
-
-
-/* LOGOUT */
-
-app.get("/logout",(req,res)=>{
-
-req.session.destroy(()=>{
-res.redirect("/")
-})
-
-})
+// LOGOUT
+app.get("/logout", (req, res) => {
+  req.session.destroy(() => {
+    res.redirect("/");
+  });
+});
