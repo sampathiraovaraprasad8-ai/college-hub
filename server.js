@@ -16,9 +16,9 @@ const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Variables from Environment
+// Variables from Environment (Render)
 const MONGO_URI = process.env.MONGO_URI;
-const PORT = process.env.PORT || 10000; // Render uses 10000 by default
+const PORT = process.env.PORT || 10000; 
 
 /* MIDDLEWARE */
 app.use(express.static("public"));
@@ -29,13 +29,13 @@ app.use(
   session({
     secret: process.env.SESSION_SECRET || "collegeportal",
     resave: false,
-    saveUninitialized: false, // Changed to false for better performance
+    saveUninitialized: false, 
     store: MongoStore.create({
       mongoUrl: MONGO_URI,
       collectionName: "sessions",
     }),
     cookie: {
-        maxAge: 1000 * 60 * 60 * 24 // 1 day
+        maxAge: 1000 * 60 * 60 * 24 // Sessions last 1 day
     }
   })
 );
@@ -56,7 +56,7 @@ let users;
 async function start() {
   try {
     if (!MONGO_URI) {
-        throw new Error("MONGO_URI is missing from Environment Variables!");
+        throw new Error("MONGO_URI is missing! Check Render Environment Variables.");
     }
     
     await client.connect();
@@ -64,12 +64,13 @@ async function start() {
     users = db.collection("users");
     console.log("MongoDB Connected ✅");
 
+    // Important: Listen on 0.0.0.0 for Render
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);
     });
   } catch (err) {
-    console.error("❌ Failed to connect to MongoDB:", err.message);
-    process.exit(1); // Stop the server if DB fails
+    console.error("❌ Database Connection Error:", err.message);
+    process.exit(1); 
   }
 }
 
@@ -91,7 +92,7 @@ app.get("/home", checkAuth, (req, res) => {
   res.sendFile(path.join(__dirname, "public", "home.html"));
 });
 
-// OTHER PAGES
+// YEAR PAGES
 const pages = ["first-year", "second-year", "third-year"];
 pages.forEach(page => {
     app.get(`/${page}`, checkAuth, (req, res) => {
@@ -99,7 +100,7 @@ pages.forEach(page => {
     });
 });
 
-// REGISTER
+// REGISTER LOGIC
 app.post("/register", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -114,7 +115,7 @@ app.post("/register", async (req, res) => {
   }
 });
 
-// LOGIN
+// LOGIN LOGIC
 app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
