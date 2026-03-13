@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>College Portal Login</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:"Poppins",sans-serif;
+}
+
+/* Background */
+
+body{
+height:100vh;
+display:flex;
+justify-content:center;
+align-items:center;
+background:linear-gradient(135deg,#0f2a66,#050b1f);
+overflow:hidden;
+}
+
+/* Floating shapes */
+
+.circle{
+position:absolute;
+border-radius:50%;
+filter:blur(60px);
+opacity:0.6;
+animation:float 8s infinite ease-in-out alternate;
+}
+
+.circle1{
+width:300px;
+height:300px;
+background:#4e8cff;
+top:10%;
+left:10%;
+}
+
+.circle2{
+width:250px;
+height:250px;
+background:#ff4ecd;
+bottom:10%;
+right:10%;
+animation-delay:2s;
+}
+
+@keyframes float{
+from{transform:translateY(-30px)}
+to{transform:translateY(30px)}
+}
+
+/* Glass container */
+
+.container{
+position:relative;
+width:380px;
+height:340px;
+background:rgba(255,255,255,0.08);
+border-radius:15px;
+backdrop-filter:blur(15px);
+box-shadow:0 0 30px rgba(0,0,0,0.4);
+overflow:hidden;
+color:white;
+}
+
+/* Forms wrapper */
+
+.forms{
+display:flex;
+width:200%;
+height:100%;
+transition:0.5s;
+}
+
+/* Each form */
+
+.form{
+width:50%;
+padding:40px;
+}
+
+h2{
+text-align:center;
+margin-bottom:20px;
+}
+
+/* Inputs */
+
+.input-box{
+margin-bottom:15px;
+}
+
+.input-box input{
+width:100%;
+padding:10px;
+border:none;
+outline:none;
+border-radius:6px;
+background:rgba(255,255,255,0.2);
+color:white;
+}
+
+.input-box input::placeholder{
+color:#ddd;
+}
+
+/* Password icon */
+
+.password-box{
+position:relative;
+}
+
+.eye{
+position:absolute;
+right:12px;
+top:11px;
+cursor:pointer;
+}
+
+/* Buttons */
+
+.btn{
+width:100%;
+padding:10px;
+border:none;
+border-radius:6px;
+background:linear-gradient(45deg,#4e8cff,#2f6fff);
+color:white;
+font-weight:600;
+cursor:pointer;
+transition:0.3s;
+}
+
+.btn:hover{
+transform:translateY(-2px);
+box-shadow:0 0 10px #4e8cff;
+}
+
+/* Toggle text */
+
+.toggle{
+text-align:center;
+margin-top:15px;
+font-size:14px;
+}
+
+.toggle span{
+color:#4e8cff;
+cursor:pointer;
+}
+
+/* Sliding animation */
+
+.container.active .forms{
+transform:translateX(-50%);
+}
+
+/* Mobile */
+
+@media(max-width:420px){
+
+.container{
+width:90%;
+}
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="circle circle1"></div>
+<div class="circle circle2"></div>
+
+<div class="container">
+
+<div class="forms">
+
+<!-- LOGIN -->
+
+<form class="form" action="/login" method="POST">
+
+<h2>Login</h2>
+
+<div class="input-box">
+<input type="email" name="email" placeholder="Email" required>
+</div>
+
+<div class="input-box password-box">
+<input type="password" name="password" id="loginPass" placeholder="Password" required>
+<span class="eye" onclick="togglePass('loginPass')">👁</span>
+</div>
+
+<button class="btn">Login</button>
+
+<div class="toggle">
+Don't have an account?
+<span onclick="showRegister()">Register</span>
+</div>
+
+</form>
+
+<!-- REGISTER -->
+
+<form class="form" action="/register" method="POST">
+
+<h2>Create Account</h2>
+
+<div class="input-box">
+<input type="email" name="email" placeholder="Email" required>
+</div>
+
+<div class="input-box password-box">
+<input type="password" name="password" id="regPass" placeholder="Password" required>
+<span class="eye" onclick="togglePass('regPass')">👁</span>
+</div>
+
+<button class="btn">Register</button>
+
+<div class="toggle">
+Already have an account?
+<span onclick="showLogin()">Login</span>
+</div>
+
+</form>
+
+</div>
+
+</div>
+
+<script>
+
+/* Slide forms */
+
+function showRegister(){
+document.querySelector(".container").classList.add("active")
+}
+
+function showLogin(){
+document.querySelector(".container").classList.remove("active")
+}
+
+/* Password show/hide */
+
+function togglePass(id){
+
+const input=document.getElementById(id)
+
+if(input.type==="password"){
+input.type="text"
+}else{
+input.type="password"
+}
+
+}
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Message</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+
+body{
+margin:0;
+height:100vh;
+display:flex;
+justify-content:center;
+align-items:center;
+font-family:Arial;
+background:linear-gradient(135deg,#0f2a66,#050b1f);
+color:white;
+}
+
+.card{
+background:rgba(255,255,255,0.08);
+padding:40px;
+border-radius:15px;
+text-align:center;
+backdrop-filter:blur(10px);
+box-shadow:0 0 30px rgba(0,0,0,0.5);
+width:350px;
+}
+
+h2{
+margin-bottom:10px;
+}
+
+p{
+opacity:0.8;
+margin-bottom:25px;
+}
+
+button{
+padding:10px 20px;
+border:none;
+border-radius:6px;
+background:#4e8cff;
+color:white;
+cursor:pointer;
+}
+
+button:hover{
+background:#2f6fff;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="card">
+
+<h2 id="title">Message</h2>
+<p id="text">Something happened</p>
+
+<button onclick="window.location.href='/'">
+Back to Login
+</button>
+
+</div>
+
+<script>
+
+const params = new URLSearchParams(window.location.search)
+
+document.getElementById("text").innerText = params.get("msg")
+
+</script>
+
+</body>
+</html>
